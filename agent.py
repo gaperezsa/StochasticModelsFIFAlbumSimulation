@@ -1,10 +1,5 @@
 import random
 
-n = 560
-p = 1
-P = [pow(1.01,i-1)*p for i in range(0,n)]
-P_acumulated = [sum(P[:-n+i]) for i in range(0,n)]
-
 class Agent(): #
     def __init__(self, total, posX, posY):
         self.total = total
@@ -19,11 +14,12 @@ class Agent(): #
         self.posY = posY
     def getRepeated(self):
         return self.repeated
+    
     def openEnvelope(self):
         def getRandomSticker():
             rand = random.random(0,1)
             for p in P_acumulated:
-                if rand >= p:
+                if rand <= p:
                     sticker = P_acumulated.index(p)
                     break
             return sticker
@@ -49,28 +45,32 @@ class Agent(): #
         PeersNeeds = []
         #Check stickers needed that are available in repeated list of peer
         for sticker in peerRepeated:
-            if sticker not in self.obtained:
+            if sticker not in self.obtained and sticker not in needed:
                 needed.append(sticker)
+                
         #Check stickers needed for peer that are available in my repeated list
         for sticker in myRepeated:
-            if sticker not in otherAgent.obtained:
+            if sticker not in otherAgent.obtained and sticker not in PeersNeeds:
                 PeersNeeds.append(sticker)
+                
         needed.sort()
         PeersNeeds.sort()
-        #CalculatePrice and make deal
+        
+        #Calculate Price and make deal
         myPrice = calculatePrice(PeersNeeds)
         peerPrice = calculatePrice(needed)
+        #Verify fair trade
         delta = myPrice - peerPrice
         if delta > 0:
             while delta > 0:
-                mostValueSticker = PeersNeeds.pop(-1)
+                mostValueSticker = PeersNeeds.pop(0)
                 myPrice = calculatePrice(PeersNeeds)
                 peerPrice = calculatePrice(needed)
                 delta = myPrice - peerPrice
             PeersNeeds.append(mostValueSticker)
         elif delta < 0:
             while delta < 0:
-                mostValueSticker = needed.pop(-1)
+                mostValueSticker = needed.pop(0)
                 myPrice = calculatePrice(PeersNeeds)
                 peerPrice = calculatePrice(needed)
                 delta = myPrice - peerPrice
@@ -83,97 +83,4 @@ class Agent(): #
         for sticker in PeersNeeds:
             otherAgent.addSticker(sticker)
             self.removeRepeated(sticker)
-        
-            
-        
-        
-        
-            
-              
-        
-    
-
-def initialize():
-    T = [] # Initial values for Time and Space
-    X = [] # Initial values for Studio 
-    theta = [] # Initial values for features
-    E = [] # Initial values for parameters
-    L = [] # Initial values for List of Events
-    return
-
-
-def manageTimeAndSpace():
-    
-    return
-
-def updateSystem():
-    return
-
-def updateFeatures():
-    return
-
-def updateEventsList():
-    return
-
-def event_1():
-    X     = updateSystem()
-    theta = updateFeatures()
-    L     = updateEventsList()
-    #Inicio de dia
-    return
-def event_2():
-    X     = updateSystem()
-    theta = updateFeatures()
-    L     = updateEventsList()
-    #Comprar Sobres
-    return
-def event_3():
-    X     = updateSystem()
-    theta = updateFeatures()
-    L     = updateEventsList()
-    # Caminar e intercambiar
-    return
-def event_4():
-    X     = updateSystem()
-    theta = updateFeatures()
-    L     = updateEventsList()
-    # Fin de dia 
-    return
-
-def generateReport():
-    print("Eureka")
-    return
-
-
-if __name__ == "main":
-    print("=============Filling album - Simulation based agents================================")
-    print("How many agents should be simulated?")
-    try:
-        agents = abs(int(input()))
-    except:
-        print("Enter a valid number of agents")
-    print("How many stickers have the album?")
-    try:
-        agents = abs(int(input()))
-    except:
-        print("Enter a valid number of stickers")
-    print("")
-    Error = 0
-    initialize()
-    End = False
-    while(not End and Error == 0):
-        i = manageTimeAndSpace( End , Error )
-        if i == 1:
-            event_1()
-        if i == 2:
-            event_2()
-        if i == 3:
-            event_3()
-        if i == 4:
-            event_4()
-        if i == 5:
-            event_5()
-        if i == 6:
-            event_6()
-            
-    generateReport()
+ 
