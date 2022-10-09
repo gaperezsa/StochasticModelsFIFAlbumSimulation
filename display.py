@@ -1,23 +1,32 @@
+from asyncio.windows_events import INFINITE
+from sre_parse import HEXDIGITS
 import pygame
 import os
 import random
-
-
-#window
-WIDTH,HEIGHT = 1500,800
-WIN = pygame.display.set_mode((WIDTH,HEIGHT))
-pygame.display.set_caption("FIFAlbum simulation")
+import time
 
 #useful constants
 WHITE = (255,255,255)
 number_of_agents = 150
-FPS=15
+number_of_days = 50
+initialPurchase = 100
+dailyPurchase = 30
+dayDuration = 100
+daysElapsed = 0
+FPS=200
 speed_limit = 4
 sprite_width=30
 sprite_height=32
 AFICIONADO1 = pygame.image.load(os.path.join("Assets","CharactersSprites1.png"))
 AFICIONADO2 = pygame.image.load(os.path.join("Assets","CharactersSprites2.png"))
 AFICIONADO3 = pygame.image.load(os.path.join("Assets","CharactersSprites3.png"))
+
+L = [None]*4
+endStates = []
+
+WIDTH = 0
+HEIGHT = 0
+WIN = 0
 
 def draw_window(agents):
     WIN.fill(WHITE)
@@ -110,47 +119,110 @@ def generateReport(agents):
         print("No albums were filled in this simulation")
     for agent in agents_filled:
         print("Generating report for agent--- \nOpened envelopes:" + str(agent.envelopesOpened) + "\nStickers traded: " + str(agent.stickersTraded))
-    #print(agents[0].obtained)
-    #print(agents[0].repeated)
-    #print("================================================================================================================================================================================================")
-    #print(agents[1].obtained)
-    #print(agents[1].repeated)
     print("Agents with album filled " + str(len(agents_filled)))
-    #print("Average envelopes opened " + str(sum(agents_filled)/len(agents_filled)))
+    if len(agents_filled) > 0:
+        print("Average envelopes opened " + str(sum([agent.get_envelopes_opened() for agent in agents_filled])/len(agents_filled)))
     
     
-        
-            
-            
+def event_1(agents, quantity): #Compra inicial
+    L[0] = float('inf')
+    buy_envelopes(agents, quantity)
     
+def event_2(agents, quantity): #Nuevo dia
+    global daysElapsed
+    daysElapsed += 1
+    time.sleep(0.2)
+    if daysElapsed == number_of_days:
+        L[1] = float('inf')
+    else:
+        L[1] += 2
+    buy_envelopes(agents, quantity)
     
-
-    
-import prueba
-def main():
-    agents = [Agent(random.uniform(0, WIDTH),random.uniform(0, HEIGHT),x%4) for x in range(number_of_agents)]
-    clock = pygame.time.Clock()
+def event_3(agents, clock, FPS, dayDuration): #Salir a tradear
+    global daysElapsed
+    if daysElapsed == number_of_days:
+        L[2] = float('inf')
+    else:
+        L[2] += 2
     run = True
-    prueba.initialize()
+    steps = 0
     while run:
+        if steps >= dayDuration: break
+        steps += 1
         clock.tick(FPS)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+                L[1] = float('inf')
+                L[2] = float('inf')
         for agent in agents:
             agent.next_random_move()
             update_trades(agent,1)
         
-        buy_envelopes(agents,1)
         check_collision_for_trading(agents)
         
         draw_window(agents)
     
+    
+def event_4(): #Fin del mundo
     pygame.quit()
+            
+            
+def initialize(): #Initial parameters
+    global daysElapsed, endStates, WIDTH, HEIGHT, WIN
+    daysElapsed = 0
+    #Create window
+    WIDTH,HEIGHT = 1500,800
+    WIN = pygame.display.set_mode((WIDTH,HEIGHT))
+    pygame.display.set_caption("FIFAlbum simulation")
+    #Set up initial events
+    L[0] = 0
+    L[1] = 1
+    L[2] = 2
+    L[3] = 1 + 2 * number_of_days
+    #Set up end states
+    endStates = [4]
+    #Initial parameters
+    agents = [Agent(random.uniform(0, WIDTH),random.uniform(0, HEIGHT),x%4) for x in range(number_of_agents)]
+    clock = pygame.time.Clock()
+    return agents, clock
+
+def manageTimeAndSpace():
+    nextEvent = -1
+    nextEventTime = float('inf')
+    print("LEN", len(L))
+    for i in range(len(L)):
+        print("\t try", i, "->", L[i])
+        if L[i] < nextEventTime:
+            nextEvent = i+1
+            nextEventTime = L[i]
+    return nextEvent
+
+def main():
+    global daysElapsed
+    agents , clock = initialize()
+    End = False
+    Error = False
+    while(not End and not Error):
+        i = manageTimeAndSpace()
+        print("Event ", i)
+        if i == 1:
+            event_1(agents, initialPurchase)
+        if i == 2:
+            event_2(agents, dailyPurchase)
+        if i == 3:
+            event_3(agents, clock, FPS, dayDuration)
+        if i == 4:
+            event_4()
+        if i == -1:
+            Error = True
+        if i in endStates:
+            End = True
     generateReport(agents)
+    
 
 n = 638
-factor = 1.0000001
+factor = 1.005
 p = (1-factor)/(1-(factor**n))
 P = [pow(factor,i)*p for i in range(0,n)]
 P_accumulated = [sum(P[:i+1]) for i in range(0,n)]
@@ -187,6 +259,7 @@ class Agent:
         return pygame.Rect(self.x,self.y,sprite_width,sprite_height)
     
     def next_random_move(self):
+        global WIDTH, HEIGHT
 
         if self.state == "trading":
             return
