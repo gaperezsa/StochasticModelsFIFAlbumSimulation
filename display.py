@@ -5,6 +5,11 @@ import os
 import random
 import time
 
+pygame.init()
+font = pygame.font.Font("freesansbold.ttf",32)
+text = font.render("Day: 0",True,(0,255,0),(0,0,255))
+textRect = text.get_rect()
+
 #useful constants
 WHITE = (255,255,255)
 number_of_agents = 150
@@ -29,7 +34,9 @@ HEIGHT = 0
 WIN = 0
 
 def draw_window(agents):
+    global text, textRect
     WIN.fill(WHITE)
+    WIN.blit(text, textRect)
     for agent in agents:
         WIN.blit(agent.aficionado_image,(agent.x,agent.y),tuple(agent.next_intertial_frame()))
     pygame.display.update()
@@ -129,8 +136,10 @@ def event_1(agents, quantity): #Compra inicial
     buy_envelopes(agents, quantity)
     
 def event_2(agents, quantity): #Nuevo dia
-    global daysElapsed
+    global daysElapsed, text, textRect
     daysElapsed += 1
+    text = font.render("Day: " + str(daysElapsed),True,(0,255,0),(0,0,255))
+    textRect = text.get_rect()
     time.sleep(0.2)
     if daysElapsed == number_of_days:
         L[1] = float('inf')
@@ -169,12 +178,13 @@ def event_4(): #Fin del mundo
             
             
 def initialize(): #Initial parameters
-    global daysElapsed, endStates, WIDTH, HEIGHT, WIN
+    global daysElapsed, endStates, WIDTH, HEIGHT, WIN, textRect
     daysElapsed = 0
     #Create window
     WIDTH,HEIGHT = 1500,800
     WIN = pygame.display.set_mode((WIDTH,HEIGHT))
     pygame.display.set_caption("FIFAlbum simulation")
+    textRect.center = (WIDTH//2,HEIGHT//10)
     #Set up initial events
     L[0] = 0
     L[1] = 1
