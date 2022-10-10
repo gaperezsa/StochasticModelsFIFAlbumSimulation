@@ -1,46 +1,16 @@
-from asyncio.windows_events import INFINITE
-from sre_parse import HEXDIGITS
 import pygame
-import os
 import random
 import time
-
-pygame.init()
-font = pygame.font.Font("freesansbold.ttf", 32)
-text = font.render("Day: 0", True, (0, 255, 0), (0, 0, 255))
-textRect = text.get_rect()
-
-# useful constants
-WHITE = (255, 255, 255)
-number_of_agents = 150
-number_of_days = 50
-initialPurchase = 100
-dailyPurchase = 30
-dayDuration = 100
-daysElapsed = 0
-FPS = 200
-speed_limit = 4
-sprite_width = 30
-sprite_height = 32
-AFICIONADO1 = pygame.image.load(
-    os.path.join("assets", "CharactersSprites1.png"))
-AFICIONADO2 = pygame.image.load(
-    os.path.join("assets", "CharactersSprites2.png"))
-AFICIONADO3 = pygame.image.load(
-    os.path.join("assets", "CharactersSprites3.png"))
+from game_config import gameConfig, WHITE, FONT, FPS, WIDTH, HEIGHT, WIN
+from agent import Agent
 
 L = [None]*4
 endStates = []
 
-WIDTH = 0
-HEIGHT = 0
-WIN = 0
-
 
 def draw_window(agents):
-    global text, textRect
     WIN.fill(WHITE)
-    WIN.blit(text, textRect)
+    WIN.blit(gameConfig.day_count_text, gameConfig.day_count_text_container)
     for agent in agents:
         WIN.blit(agent.aficionado_image, (agent.x, agent.y),
                  tuple(agent.next_intertial_frame()))
@@ -81,7 +51,8 @@ def check_collision_for_trading(agents):
                 else:
                     collisions.add((index, possible_collision_index))
                     break
-
+    sprite_width = gameConfig.sprite_width
+    speed_limit = gameConfig.speed_limit
     for collision in collisions:
         agents[collision[0]].state = "trading"
         agents[collision[1]].state = "trading"
@@ -144,29 +115,27 @@ def event_1(agents, quantity):  # Compra inicial
 
 
 def event_2(agents, quantity):  # Nuevo dia
-    global daysElapsed, text, textRect
-    daysElapsed += 1
-    text = font.render("Day: " + str(daysElapsed),
-                       True, (0, 255, 0), (0, 0, 255))
-    textRect = text.get_rect()
+    gameConfig.days_elapsed += 1
+    gameConfig.day_count_text = FONT.render("Day: " + str(gameConfig.days_elapsed),
+                                 True, (0, 255, 0), (0, 0, 255))
+    gameConfig.day_count_text_container = gameConfig.day_count_text.get_rect()
     time.sleep(0.2)
-    if daysElapsed == number_of_days:
+    if gameConfig.days_elapsed == gameConfig.number_of_days:
         L[1] = float('inf')
     else:
         L[1] += 2
     buy_envelopes(agents, quantity)
 
 
-def event_3(agents, clock, FPS, dayDuration):  # Salir a tradear
-    global daysElapsed
-    if daysElapsed == number_of_days:
+def event_3(agents, clock, FPS, day_duration):  # Salir a tradear
+    if gameConfig.days_elapsed == gameConfig.number_of_days:
         L[2] = float('inf')
     else:
         L[2] += 2
     run = True
     steps = 0
     while run:
-        if steps >= dayDuration:
+        if steps >= day_duration:
             break
         steps += 1
         clock.tick(FPS)
@@ -189,23 +158,23 @@ def event_4():  # Fin del mundo
 
 
 def initialize():  # Initial parameters
-    global daysElapsed, endStates, WIDTH, HEIGHT, WIN, textRect
-    daysElapsed = 0
+    global endStates, WIDTH, HEIGHT, WIN
+    gameConfig.days_elapsed = 0
     # Create window
     WIDTH, HEIGHT = 1500, 800
     WIN = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("FIFAlbum simulation")
-    textRect.center = (WIDTH//2, HEIGHT//10)
+    gameConfig.day_count_text_container.center = (WIDTH//2, HEIGHT//10)
     # Set up initial events
     L[0] = 0
     L[1] = 1
     L[2] = 2
-    L[3] = 1 + 2 * number_of_days
+    L[3] = 1 + 2 * gameConfig.number_of_days
     # Set up end states
     endStates = [4]
     # Initial parameters
     agents = [Agent(random.uniform(0, WIDTH), random.uniform(
-        0, HEIGHT), x % 4) for x in range(number_of_agents)]
+        0, HEIGHT), x % 4) for x in range(gameConfig.number_of_agents)]
     clock = pygame.time.Clock()
     return agents, clock
 
@@ -223,7 +192,6 @@ def manageTimeAndSpace():
 
 
 def main():
-    global daysElapsed
     agents, clock = initialize()
     End = False
     Error = False
@@ -231,11 +199,11 @@ def main():
         i = manageTimeAndSpace()
         print("Event ", i)
         if i == 1:
-            event_1(agents, initialPurchase)
+            event_1(agents, gameConfig.initial_purchase)
         if i == 2:
-            event_2(agents, dailyPurchase)
+            event_2(agents, gameConfig.daily_purchase)
         if i == 3:
-            event_3(agents, clock, FPS, dayDuration)
+            event_3(agents, clock, FPS, gameConfig.day_duration)
         if i == 4:
             event_4()
         if i == -1:
@@ -243,213 +211,6 @@ def main():
         if i in endStates:
             End = True
     generateReport(agents)
-
-
-n = 638
-factor = 1.005
-p = (1-factor)/(1-(factor**n))
-P = [pow(factor, i)*p for i in range(0, n)]
-P_accumulated = [sum(P[:i+1]) for i in range(0, n)]
-
-
-class Agent:
-    def __init__(self, initialX, initialY, aficionado_number):
-        # Positions of the agent
-        self.x = initialX
-        self.y = initialY
-        # Speed of the agent
-        self.x_speed = 0
-        self.y_speed = 0
-        # Stickers of the agent
-        self.obtained = set()
-        self.repeated = []
-        self.filled = False
-        # Open envelopes
-        self.envelopesOpened = 0
-        self.stickersTraded = 0
-        self.previous_inertial_frame = [0, 0, 30, 32]
-        self.current_direction = "down"
-        self.aficionado_image = AFICIONADO1
-        if aficionado_number == 0:
-            self.aficionado_image = AFICIONADO1
-        elif aficionado_number == 1:
-            self.aficionado_image = AFICIONADO2
-        elif aficionado_number == 2:
-            self.aficionado_image = AFICIONADO3
-        self.state = "idle"  # idle,trading
-        self.frames_to_finish_trade = 0
-        self.last_traded_with = -1
-
-    def get_rectangle(self):
-        return pygame.Rect(self.x, self.y, sprite_width, sprite_height)
-
-    def next_random_move(self):
-        global WIDTH, HEIGHT
-
-        if self.state == "trading":
-            return
-
-        self.x_speed += random.uniform(-1, 1)
-        self.y_speed += random.uniform(-1, 1)
-        self.x_speed = speed_limit if self.x_speed > speed_limit else self.x_speed
-        self.x_speed = -speed_limit if self.x_speed < -speed_limit else self.x_speed
-        self.y_speed = speed_limit if self.y_speed > speed_limit else self.y_speed
-        self.y_speed = -speed_limit if self.y_speed < -speed_limit else self.y_speed
-
-        if self.x + self.x_speed < 0:
-            self.x_speed = speed_limit
-        elif self.x + self.x_speed > WIDTH:
-            self.x_speed = -speed_limit
-        self.x += self.x_speed
-
-        if self.y + self.y_speed < 0:
-            self.y_speed = speed_limit
-        elif self.y + self.y_speed > HEIGHT:
-            self.y_speed = -speed_limit
-        self.y += self.y_speed
-
-    def get_repeated(self):
-        return self.repeated
-
-    def add_sticker(self, sticker):
-        self.obtained.add(sticker)
-
-    def is_filled(self):
-        return self.filled
-
-    def open_envelope(self):
-        def get_random_sticker():
-            rand = random.uniform(0, 1)
-            for p in P_accumulated:
-                if rand <= p:
-                    sticker = P_accumulated.index(p)
-                    return sticker
-            return n-1
-        if self.is_filled():
-            return
-        for i in range(0, 5):
-            sticker = get_random_sticker()
-            assert sticker != None
-            if sticker in self.obtained:
-                self.repeated.append(sticker)
-            else:
-                self.obtained.add(sticker)
-                # Check if album is filled
-                self.check_album_filled()
-        # Add the opened envelope
-        self.envelopesOpened += 1
-
-    def remove_repeated(self, sticker):
-        self.repeated.remove(sticker)
-
-    def count_sticker_traded(self):
-        self.stickersTraded += 1
-
-    def get_envelopes_opened(self):
-        opened = self.envelopesOpened + (self.stickersTraded / 5)
-        return opened
-
-    def trade(self, otherAgent):
-        def calculatePrice(stickers):
-            return sum([1/P[sticker] for sticker in stickers])
-
-        if self.is_filled() or otherAgent.is_filled():
-            return
-
-        myRepeated = self.repeated
-        peerRepeated = otherAgent.get_repeated()
-        needed = []
-        PeersNeeds = []
-        # Check stickers needed that are available in repeated list of peer
-        for sticker in peerRepeated:
-            if sticker not in self.obtained:
-                needed.append(sticker)
-        # Check stickers needed for peer that are available in my repeated list
-        for sticker in myRepeated:
-            if sticker not in otherAgent.obtained:
-                PeersNeeds.append(sticker)
-        # No trade if someone does not have any sticker on the lists
-        if len(needed) == 0 or len(PeersNeeds) == 0:
-            return
-        # sort lists
-        needed.sort()
-        PeersNeeds.sort()
-        # CalculatePrice and make deal
-        myPrice = calculatePrice(PeersNeeds)
-        peerPrice = calculatePrice(needed)
-        delta = myPrice - peerPrice
-        if delta > 0:
-            while delta > 0:
-                mostValueSticker = PeersNeeds.pop(-1)
-                myPrice = calculatePrice(PeersNeeds)
-                peerPrice = calculatePrice(needed)
-                delta = myPrice - peerPrice
-            PeersNeeds.append(mostValueSticker)
-        elif delta < 0:
-            while delta < 0:
-                mostValueSticker = needed.pop(-1)
-                myPrice = calculatePrice(PeersNeeds)
-                peerPrice = calculatePrice(needed)
-                delta = myPrice - peerPrice
-            needed.append(mostValueSticker)
-
-        # Make deal and add the sticker to total stickers traded
-        for sticker in needed:
-            self.add_sticker(sticker)
-            otherAgent.remove_repeated(sticker)
-            self.count_sticker_traded()
-        for sticker in PeersNeeds:
-            otherAgent.add_sticker(sticker)
-            self.remove_repeated(sticker)
-            otherAgent.count_sticker_traded()
-
-        # Check if album is already filled
-        self.check_album_filled()
-        otherAgent.check_album_filled()
-
-    def check_album_filled(self):
-        if len(self.obtained) == n:
-            self.filled = True
-
-    def next_intertial_frame(self):
-        epsilon = 0.01
-        if abs(self.x_speed) < 0+epsilon and abs(self.x_speed) < 0+epsilon:
-            self.previous_inertial_frame[0] = 30
-        elif abs(self.x_speed) > abs(self.y_speed):
-            if self.x_speed < 0 and self.current_direction == "left":
-                self.previous_inertial_frame[0] = (
-                    self.previous_inertial_frame[0] + sprite_width) % (3*sprite_width)
-            elif self.x_speed < 0 and self.current_direction != "left":
-                self.previous_inertial_frame[0] = 0
-                self.previous_inertial_frame[1] = sprite_height
-                self.current_direction = "left"
-            elif self.x_speed > 0 and self.current_direction == "right":
-                self.previous_inertial_frame[0] = (
-                    self.previous_inertial_frame[0] + sprite_width) % (3*sprite_width)
-            elif self.x_speed > 0 and self.current_direction != "right":
-                self.previous_inertial_frame[0] = 0
-                self.previous_inertial_frame[1] = 2*sprite_height
-                self.current_direction = "right"
-        elif abs(self.y_speed) > abs(self.x_speed):
-            if self.y_speed < 0 and self.current_direction == "up":
-                self.previous_inertial_frame[0] = (
-                    self.previous_inertial_frame[0] + sprite_width) % (3*sprite_width)
-            elif self.y_speed < 0 and self.current_direction != "up":
-                self.previous_inertial_frame[0] = 0
-                self.previous_inertial_frame[1] = 3*sprite_height
-                self.current_direction = "up"
-            elif self.y_speed > 0 and self.current_direction == "down":
-                self.previous_inertial_frame[0] = (
-                    self.previous_inertial_frame[0] + 30) % 90
-            elif self.y_speed > 0 and self.current_direction != "down":
-                self.previous_inertial_frame[0] = 0
-                self.previous_inertial_frame[1] = 0
-                self.current_direction = "down"
-
-        if self.state == "trading":
-            self.previous_inertial_frame[0] = 30
-
-        return self.previous_inertial_frame
 
 
 if __name__ == "__main__":
