@@ -16,7 +16,6 @@ factor = 1.005
 p = (1-factor)/(1-(factor**n))
 P = [pow(factor, i)*p for i in range(0, n)]
 P_accumulated = [sum(P[:i+1]) for i in range(0, n)]
-print(P_accumulated)
 
 class AgentDirections(Enum):
     LEFT = 'left'

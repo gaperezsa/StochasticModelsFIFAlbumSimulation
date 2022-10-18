@@ -9,7 +9,6 @@ fifth point of the stochastic models midterm
 ```
 > python src/main.py
 ```
-
 - Run main (python3):
 ```
 > python3 src/main.py
