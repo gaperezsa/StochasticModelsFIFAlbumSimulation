@@ -125,12 +125,12 @@ class Simulator:
     def new_day(self, agents, quantity):  # Nuevo dia
         config = self.config
         global day_count_label, day_count_label_rect
-        config.daysElapsed += 1
-        day_count_label = font.render("Day: " + str(config.daysElapsed),
+        config.days_elapsed += 1
+        day_count_label = font.render("Day: " + str(config.days_elapsed),
                                       True, (50, 50, 50), (255, 255, 255))
         day_count_label_rect = day_count_label.get_rect()
         time.sleep(0.2)
-        if config.daysElapsed == config.number_of_days:
+        if config.days_elapsed == config.number_of_days:
             self.L[1] = float('inf')
         else:
             self.L[1] += 2
@@ -138,14 +138,14 @@ class Simulator:
 
     def trade(self, agents, clock):  # Salir a tradear
         config = self.config
-        if config.daysElapsed == config.number_of_days:
+        if config.days_elapsed == config.number_of_days:
             self.L[2] = float('inf')
         else:
             self.L[2] += 2
         run = True
         steps = 0
         while run:
-            if steps >= config.dayDuration:
+            if steps >= config.day_duration:
                 break
             steps += 1
             clock.tick(config.fps)
@@ -168,7 +168,7 @@ class Simulator:
     def initialize(self):  # Initial parameters
         config = self.config
         global day_count_label_rect
-        config.daysElapsed = 0
+        config.days_elapsed = 0
         # Create window
         context.width, context.height = 1500, 800
         context.win = pygame.display.set_mode((context.width, context.height))
@@ -207,9 +207,9 @@ class Simulator:
             i = self.get_next_event()
             print("Event ", i)
             if i == 1:
-                self.initial_purchase(agents, config.initialPurchase)
+                self.initial_purchase(agents, config.initial_purchase)
             if i == 2:
-                self.new_day(agents, config.dailyPurchase)
+                self.new_day(agents, config.daily_purchase)
             if i == 3:
                 self.trade(agents, clock)
             if i == 4:
